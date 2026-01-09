@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Psychological AI </title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<style>
+body{
+ background:#020617;color:#e5e7eb;font-family:Arial;
+ display:flex;justify-content:center;align-items:center;height:100vh;
+}
+.box{
+ width:650px;padding:25px;border-radius:10px;
+ border:2px solid #2563eb;box-shadow:0 0 30px #000;
+}
+h1{text-align:center;color:#60a5fa}
+select,textarea,button{
+ width:100%;margin-top:10px;padding:10px;border-radius:5px;border:none;
+}
+textarea{
+ height:90px;background:#020617;color:white;border:1px solid #2563eb;
+}
+button{
+ background:#2563eb;color:white;font-weight:bold;cursor:pointer;
+}
+.question{font-size:18px;margin-top:10px}
+.result{margin-top:10px;font-weight:bold;text-align:center}
+.report{margin-top:10px;font-size:14px;line-height:1.6}
+canvas{margin-top:15px}
+</style>
+</head>
+<body>
+
+<div class="box">
+<h1>🧠 Psychological Interview by Mr.Rm19</h1>
+
+<select id="sessionMode" onchange="startSession()">
+<option value="">Pilih Mode</option>
+<option value="counseling">🫂 Konseling</option>
+<option value="assessment">📋 Assessment</option>
+</select>
+
+<div class="question" id="question"></div>
+<textarea id="answer" placeholder="Ceritakan dengan bebas..."></textarea>
+<button onclick="next()">Lanjut</button>
+
+<div class="result" id="result"></div>
+<div class="report" id="report"></div>
+<button onclick="downloadPDF()" style="display:none" id="pdfBtn">
+📄 Unduh Laporan PDF
+</button>
+
+<canvas id="chart" height="150"></canvas>
+</div>
+
+<script>
+const Q={
+ counseling:[
+  "Bagaimana perasaanmu akhir-akhir ini?",
+  "Hal apa yang paling membebani pikiranmu?",
+  "Bagaimana biasanya kamu mengatasi perasaan tersebut?",
+  "Apa yang kamu harapkan dari sesi ini?"
+ ],
+ assessment:[
+  "Apakah kamu sering merasa cemas tanpa sebab jelas?",
+  "Apakah kamu mengalami kesulitan tidur?",
+  "Apakah kamu merasa tertekan dalam beberapa waktu terakhir?",
+  "Apakah perasaan tersebut mengganggu aktivitas harianmu?"
+ ]
+};
+
+let mode="",index=0,total=0;
+let scores=[],notes=[];
+
+const ctx=document.getElementById("chart");
+const chart=new Chart(ctx,{
+ type:"line",
+ data:{labels:[],datasets:[{label:"Tekanan Emosi",data:[],borderWidth:2}]},
+ options:{scales:{y:{beginAtZero:true,max:10}}}
+});
+
+function startSession(){
+ mode=document.getElementById("sessionMode").value;
+ index=0; total=0; scores=[]; notes=[];
+ chart.data.labels=[]; chart.data.datasets[0].data=[]; chart.update();
+ document.getElementById("pdfBtn").style.display="none";
+ document.getElementById("report").innerHTML="";
+ document.getElementById("result").innerText="";
+ showQ();
+}
+
+function analyze(text){
+ text=text.toLowerCase();
+ let s=0;
+ const anxiety=["cemas","takut","gelisah","panik"];
+ const sleep=["sulit tidur","insomnia"];
+ anxiety.forEach(w=>{if(text.includes(w)) s+=3});
+ sleep.forEach(w=>{if(text.includes(w)) s+=2});
+ if(text.split(" ").length<4) s+=2;
+ return s;
+}
+
+function next(){
+ const t=document.getElementById("answer").value;
+ if(!t||!mode) return;
+
+ let s=analyze(t);
+ total+=s; scores.push(s);
+
+ chart.data.labels.push("Sesi "+(index+1));
+ chart.data.datasets[0].data.push(s);
+ chart.update();
+
+ notes.push(t);
+ document.getElementById("answer").value="";
+ index++;
+
+ if(index<Q[mode].length) showQ();
+ else finish();
+}
+
+function showQ(){
+ document.getElementById("question").innerText=Q[mode][index];
+}
+
+function finish(){
+ let avg=total/scores.length;
+ let summary="";
+
+ if(mode==="assessment"){
+  summary=
+   avg<3?"Kondisi stabil":
+   avg<6?"Kecemasan ringan":
+   avg<9?"Kecemasan sedang":"Kecemasan tinggi";
+ }else{
+  summary="Indikasi tekanan emosional, disarankan eksplorasi lanjutan.";
+ }
+
+ document.getElementById("question").innerText="Sesi Selesai";
+ document.getElementById("result").innerText=
+  "Ringkasan: "+summary;
+ document.getElementById("report").innerHTML=
+  "<b>Catatan Psikologis:</b><br>"+
+  "- Mode: "+mode.toUpperCase()+"<br>"+
+  "- Rata-rata tekanan emosi: "+avg.toFixed(1)+"<br>"+
+  "- Hasil bersifat observasional, bukan diagnosis klinis.";
+
+ document.getElementById("pdfBtn").style.display="block";
+}
+
+// ================= PDF =================
+function downloadPDF(){
+ const { jsPDF } = window.jspdf;
+ const pdf=new jsPDF();
+ pdf.setFontSize(14);
+ pdf.text("LAPORAN PSIKOLOGIS",20,20);
+ pdf.setFontSize(11);
+ pdf.text("Mode: "+mode.toUpperCase(),20,35);
+ pdf.text("Ringkasan:",20,45);
+ pdf.text(document.getElementById("result").innerText,20,55);
+ pdf.text("Catatan:",20,70);
+ pdf.text(document.getElementById("report").innerText.replace(/<[^>]*>/g,""),20,80);
+ pdf.text("Disclaimer: Bukan diagnosis klinis.",20,120);
+ pdf.save("laporan_psikolog.pdf");
+}
+</script>
+
+</body>
+</html>
